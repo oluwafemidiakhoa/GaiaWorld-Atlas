@@ -45,6 +45,20 @@ const assert = require('node:assert/strict');
   await page.fill('#search','nothingmatches');
   assert.match(await page.locator('#summary').innerText(),/0 of 1/);
   await page.fill('#search','');
+  // Location evidence report: exact marker coordinates must have zero distance.
+  await page.fill('#siteName','Test location');
+  await page.fill('#siteLat','35');await page.fill('#siteLon','-120');
+  await page.fill('#radiusKm','1');await page.click('#analyzeLocation');
+  await page.getByText(/1 nearby records within 1 km/).waitFor();
+  const [evidenceDownload]=await Promise.all([page.waitForEvent('download'),page.click('#downloadEvidence')]);
+  const evidence=JSON.parse(await require('node:fs/promises').readFile(await evidenceDownload.path(),'utf8'));
+  assert.equal(evidence.schemaVersion,'gaiaworld.location-evidence.v1');
+  assert.equal(evidence.nearbyObservationCount,1);
+  assert.equal(evidence.observations[0].distanceKm,0);
+  assert.match(evidence.limitations.join(' '),/not a validated risk/);
+  await page.fill('#siteLat','91');await page.click('#analyzeLocation');
+  await page.getByText(/Enter valid coordinates/).waitFor();
+  assert.equal(await page.locator('#downloadEvidence').isDisabled(),true);
   await page.selectOption('#dataset','demo');await page.click('#loadBtn');
   assert.match(await page.locator('#summary').innerText(),/4 of 4/);
 
