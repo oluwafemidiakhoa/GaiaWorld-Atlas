@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GaiaWorld Atlas</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px system-ui;background:#091523;color:#e5eef5}.app{display:grid;grid-template-columns:335px 1fr;height:100vh}.panel{padding:23px;overflow:auto;background:#101e30;border-right:1px solid #304055}h1{margin:7px 0;font-size:26px}.brand{font-size:11px;letter-spacing:.2em;color:#68e2cd}.notice{background:#254139;padding:12px;border-radius:8px;color:#d3fff2;font-size:12px}.muted{color:#a8b8ca}label{display:block;margin:18px 0 7px}input,select,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #435870;background:#172b42;color:#fff}input,select{width:100%}button{cursor:pointer}button:hover{background:#28516a}.buttons{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px}#map{height:100%;min-height:500px}.records{margin-top:14px;display:grid;gap:7px}.record{text-align:left}.record small{display:block;color:#b0c4cf}.foot{margin-top:20px;font-size:12px}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#182c42;color:white}@media(max-width:760px){.app{display:block;height:auto}.panel{max-height:55vh}#map{height:70vh}}
+</style></head><body><main class="app"><aside class="panel">
+<div class="brand">GAIALAB / GEOSPATIAL WORKSPACE</div><h1>GaiaWorld Atlas</h1>
+<p class="muted">Explore source-attributed geographic observations.</p>
+<div class="notice"><b>DEMONSTRATION MODE</b><p>Built-in locations are real cities. Observations are entirely synthetic; no disease or climate claims are being made.</p></div>
+<label for="search">Search observations</label><input id="search" type="search" placeholder="City, domain, description">
+<label for="domain">Research domain</label><select id="domain"><option>All</option><option>Public health</option><option>Climate</option><option>Earth observation</option></select>
+<div class="buttons"><button id="importBtn">Import GeoJSON</button><button id="exportBtn">Export view</button><button id="resetBtn">Reset demo</button></div><input id="file" type="file" accept=".geojson,.json" hidden>
+<p id="summary" aria-live="polite" class="muted"></p><div id="records" class="records"></div>
+<p id="status" class="foot muted" role="status">Imports remain in your browser session. Source fields are unverified.</p></aside><div id="map" aria-label="Interactive observation map"></div></main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
+'use strict';
+const demo=[
+{title:'Houston demonstration observation',domain:'Public health',description:'Synthetic example for the map interface; not a public health finding.',source:'Synthetic demo',coordinates:[-95.3698,29.7604]},
+{title:'Lagos demonstration observation',domain:'Climate',description:'Synthetic example; not a climate measurement.',source:'Synthetic demo',coordinates:[3.3792,6.5244]},
+{title:'London demonstration observation',domain:'Earth observation',description:'Synthetic example; not a satellite measurement.',source:'Synthetic demo',coordinates:[-0.1278,51.5074]},
+{title:'Tokyo demonstration observation',domain:'Climate',description:'Synthetic example; not a climate forecast.',source:'Synthetic demo',coordinates:[139.6917,35.6895]}];
+let observations=structuredClone(demo);
+const $=id=>document.getElementById(id);
+const map=L.map('map').setView([20,0],2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+const markers=L.layerGroup().addTo(map);
+function clean(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function visible(){const q=$('search').value.toLowerCase().trim(),d=$('domain').value;return observations.filter(o=>(d==='All'||o.domain===d)&&[o.title,o.domain,o.description,o.source].join(' ').toLowerCase().includes(q));}
+function render(){markers.clearLayers();$('records').replaceChildren();const rows=visible();$('summary').textContent=rows.length+' of '+observations.length+' observations shown';
+for(const o of rows){const lat=o.coordinates[1],lng=o.coordinates[0];const m=L.marker([lat,lng]).addTo(markers).bindPopup('<b>'+clean(o.title)+'</b><p>'+clean(o.description)+'</p><small>Domain: '+clean(o.domain)+'<br>Source: '+clean(o.source)+'</small>');const b=document.createElement('button');b.className='record';b.textContent=o.title;const sm=document.createElement('small');sm.textContent=o.domain+' · '+o.source;b.append(sm);b.addEventListener('click',()=>{map.setView([lat,lng],6);m.openPopup()});$('records').append(b);}}
+function fromGeoJSON(obj){if(!obj||obj.type!=='FeatureCollection'||!Array.isArray(obj.features)||obj.features.length>5000)throw Error('Expected GeoJSON FeatureCollection (up to 5,000 features)');return obj.features.map((f,i)=>{const c=f?.geometry?.coordinates,p=f?.properties||{};if(f?.type!=='Feature'||f.geometry?.type!=='Point'||!Array.isArray(c)||c.length<2||!Number.isFinite(c[0])||!Number.isFinite(c[1])||Math.abs(c[0])>180||Math.abs(c[1])>90)throw Error('Invalid Point geometry at feature '+(i+1));return{title:String(p.title||p.name||'Observation '+(i+1)).slice(0,180),domain:String(p.domain||'Uncategorized').slice(0,80),description:String(p.description||'No description').slice(0,1200),source:String(p.source||'Unverified import').slice(0,300),coordinates:c.slice(0,2)};});}
+$('search').addEventListener('input',render);$('domain').addEventListener('change',render);
+$('importBtn').onclick=()=>$('file').click();
+$('file').onchange=async e=>{try{const f=e.target.files[0];if(!f)return;if(f.size>2e6)throw Error('File is larger than 2 MB');const parsed=fromGeoJSON(JSON.parse(await f.text()));observations=parsed;$('status').textContent='Imported '+parsed.length+' user-provided records. Provenance not verified.';render();}catch(err){$('status').textContent='Import failed: '+err.message;}finally{e.target.value='';}};
+$('resetBtn').onclick=()=>{observations=structuredClone(demo);$('search').value='';$('domain').value='All';$('status').textContent='Restored synthetic demonstration data';render();map.setView([20,0],2);};
+$('exportBtn').onclick=()=>{const out={type:'FeatureCollection',features:visible().map(o=>({type:'Feature',geometry:{type:'Point',coordinates:o.coordinates},properties:{title:o.title,domain:o.domain,description:o.description,source:o.source}}))};const url=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:'application/geo+json'}));const a=document.createElement('a');a.href=url;a.download='gaiaworld-observations.geojson';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+render();
+</script></body></html>
