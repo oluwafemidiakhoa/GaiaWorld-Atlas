@@ -18,7 +18,28 @@ const assert = require('node:assert/strict');
   await page.fill('#search','');
   await page.selectOption('#dataset','demo');await page.click('#loadBtn');
   assert.match(await page.locator('#summary').innerText(),/4 of 4/);
+
+  // Import a local GeoJSON Point and confirm dataset isolation.
+  const geo={type:'FeatureCollection',features:[{type:'Feature',properties:{title:'Imported test record',domain:'Climate',source:'Local fixture'},geometry:{type:'Point',coordinates:[2,48]}}]};
+  await page.locator('#file').setInputFiles({name:'fixture.geojson',mimeType:'application/geo+json',buffer:Buffer.from(JSON.stringify(geo))});
+  await page.getByText('Imported test record',{exact:false}).first().waitFor();
+  assert.equal(await page.locator('#dataset').inputValue(),'import');
+  assert.match(await page.locator('#summary').innerText(),/1 of 1/);
+  // Export should contain exactly the visible imported observation.
+  const [download]=await Promise.all([page.waitForEvent('download'),page.click('#exportBtn')]);
+  const exportText=await require('node:fs/promises').readFile(await download.path(),'utf8');
+  const exported=JSON.parse(exportText);
+  assert.equal(exported.features.length,1);
+  assert.equal(exported.features[0].properties.title,'Imported test record');
+  // Network failure preserves imported observations.
+  await page.unroute('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson');
+  await page.route('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson',route=>route.abort('failed'));
+  await page.selectOption('#dataset','usgs');await page.click('#loadBtn');
+  await page.getByText(/Could not load USGS data/).waitFor();
+  assert.match(await page.locator('#summary').innerText(),/1 of 1/);
+  await page.selectOption('#dataset','import');await page.click('#loadBtn');
+  assert.match(await page.locator('#summary').innerText(),/1 of 1/);
   assert.deepEqual(errors,[]);
   await browser.close();
-  console.log('PASS: demo, USGS mock load, search filtering, demo restore, no page errors');
+  console.log('PASS: demo, mocked USGS, search, import/export, dataset isolation, network failure, no page errors');
 })().catch(e=>{console.error(e);process.exit(1);});
