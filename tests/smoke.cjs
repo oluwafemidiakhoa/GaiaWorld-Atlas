@@ -7,9 +7,13 @@ const assert = require('node:assert/strict');
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson', route =>
     route.fulfill({status:200, contentType:'application/json',body:JSON.stringify({type:'FeatureCollection',metadata:{generated:Date.now()},features:[{type:'Feature',id:'test-event',properties:{mag:4.2,place:'Test Region',time:Date.now(),updated:Date.now(),status:'reviewed',url:'https://earthquake.usgs.gov/earthquakes/eventpage/test-event'},geometry:{type:'Point',coordinates:[-120,35,10]}}]})}));
+  await page.route('https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=300',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({events:[{id:'EONET_TEST',title:'Example wildfire',categories:[{title:'Wildfires'}],link:'https://eonet.gsfc.nasa.gov/',geometry:[{type:'Point',coordinates:[-122,45],date:'2026-11-01T00:00:00Z'}]}]})}));
   await page.goto('http://127.0.0.1:8080/',{waitUntil:'domcontentloaded'});
   await page.locator('#summary').waitFor();
-  assert.match(await page.locator('#summary').innerText(),/4 of 4/);
+  assert.match(await page.locator('#summary').innerText(),/1 of 1/);
+  await page.selectOption('#dataset','nasa');await page.click('#loadBtn');
+  await page.getByText('Example wildfire',{exact:false}).first().waitFor();
+  assert.match(await page.locator('#dataNotice').innerText(),/NASA NATURAL EVENTS/);
   await page.selectOption('#dataset','usgs');await page.click('#loadBtn');
   await page.getByText('M 4.2 · Test Region',{exact:false}).first().waitFor({timeout:15000});
   assert.match(await page.locator('#status').innerText(),/USGS feed generated/);
