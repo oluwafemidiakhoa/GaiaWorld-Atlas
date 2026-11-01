@@ -30,3 +30,19 @@ Add tests, opt-in curated data sources with source/date/license attribution, and
 ## License
 
 No license has yet been granted; contact the repository owner for reuse rights.
+
+## Optional real observations: USGS
+
+Choose **USGS earthquakes · past 24 hours** and click **Load selected dataset**. The app requests the [USGS official GeoJSON summary feed](https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson) directly from the browser. Each event includes source ID, observed time, feed generation time, magnitude, depth (when available), and status. The feed is a rolling 24-hour window, **not** a forecast or a stable archival dataset; locations and magnitudes can change upon review.
+
+No server proxy or API key is used. A failed download preserves the currently displayed observations. GeoJSON uploads remain browser-local and must not be presented as verified observations. The dataset selector keeps synthetic examples separate from USGS observations.
+
+### Validation checklist before merge
+
+1. Open the branch preview locally over HTTP and load the USGS feed.
+2. Confirm 24-hour events and their observation/source metadata are present; try search and filters.
+3. Disable network access and confirm loading fails gracefully without losing the displayed dataset.
+4. Import GeoJSON and check it remains separate from the USGS and demo datasets.
+5. Test narrow viewport and export GeoJSON; do not treat exported data as original USGS archival data.
+
+Production GitHub Pages continues serving `main` until this pull request is reviewed and merged.
