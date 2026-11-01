@@ -18,5 +18,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Serve Atlas
         run: python3 -m http.server 8080 --bind 127.0.0.1 > /tmp/atlas.log 2>&1 &
-      - name: Test demo and mocked live feed
+      - name: Test demo, import/export and failure recovery
         run: node tests/smoke.cjs
+      - name: Check official USGS feed availability and schema
+        run: |
+          node - <<'NODE'
+          (async()=>{
+            const response=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson',{signal:AbortSignal.timeout(20000)});
+            if(!response.ok)throw Error('USGS HTTP '+response.status);
+            const body=await response.json();
+            if(body.type!=='FeatureCollection'||!Array.isArray(body.features)||!Number.isFinite(body.metadata?.generated))throw Error('Invalid USGS schema');
+            console.log('PASS: live USGS feed schema; generated '+new Date(body.metadata.generated).toISOString()+'; events '+body.features.length);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
