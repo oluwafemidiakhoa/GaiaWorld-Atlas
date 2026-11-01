@@ -68,6 +68,8 @@ const assert = require('node:assert/strict');
   assert.equal(portfolio.locations.length,2);
   assert.equal(portfolio.locations[0].matchingRecords,1);
   assert.equal(portfolio.locations[1].matchingRecords,0);
+  await page.click('#validateEvidence');
+  await page.getByText(/Quality check: no blocking issues/).waitFor();
   await page.click('#saveSnapshot');
   assert.match(await page.locator('#historySummary').innerText(),/1 saved snapshots/);
   await page.reload({waitUntil:'domcontentloaded'});

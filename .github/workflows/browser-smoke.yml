@@ -16,6 +16,8 @@ jobs:
           node-version: '22'
       - run: npm install --no-save playwright@1.56.1
       - run: npx playwright install --with-deps chromium
+      - name: Validate report quality rules
+        run: node tests/report-quality.cjs
       - name: Serve Atlas
         run: python3 -m http.server 8080 --bind 127.0.0.1 > /tmp/atlas.log 2>&1 &
       - name: Test demo, import/export and failure recovery
