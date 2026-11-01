@@ -84,7 +84,16 @@ const assert = require('node:assert/strict');
   await page.fill('#siteLat','91');await page.click('#analyzeLocation');
   await page.getByText(/Enter valid coordinates/).waitFor();
   assert.equal(await page.locator('#downloadEvidence').isDisabled(),true);
-  await page.selectOption('#dataset','demo');await page.click('#loadBtn');
+  await page.selectOption('#domain','Public health');
+  assert.equal(await page.locator('#dataset').inputValue(),'health');
+  assert.match(await page.locator('#dataNotice').innerText(),/No verified public-health/);
+  assert.match(await page.locator('#summary').innerText(),/0 of 0/);
+  await page.selectOption('#domain','Climate');
+  assert.equal(await page.locator('#dataset').inputValue(),'nasa');
+  await page.getByText(/NASA EONET/).first().waitFor({timeout:15000});
+  await page.selectOption('#dataset','demo');
+  assert.equal(await page.locator('#domain').inputValue(),'All');
+  await page.click('#loadBtn');
   assert.match(await page.locator('#summary').innerText(),/4 of 4/);
 
   // Import a local GeoJSON Point and confirm dataset isolation.
