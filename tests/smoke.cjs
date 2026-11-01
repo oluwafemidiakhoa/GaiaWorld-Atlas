@@ -12,6 +12,7 @@ const assert = require('node:assert/strict');
   await page.goto('http://127.0.0.1:8080/',{waitUntil:'domcontentloaded'});
   await page.locator('#summary').waitFor();
   assert.match(await page.locator('#summary').innerText(),/1 of 1/);
+  await page.fill('#species','Panthera leo');
   await page.selectOption('#dataset','gbif');await page.click('#loadBtn');
   await page.getByText('Panthera leo',{exact:false}).first().waitFor();
   assert.match(await page.locator('#dataNotice').innerText(),/GBIF BIODIVERSITY RECORDS/);
