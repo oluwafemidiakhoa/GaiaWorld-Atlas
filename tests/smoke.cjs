@@ -8,9 +8,13 @@ const assert = require('node:assert/strict');
   await page.route('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson', route =>
     route.fulfill({status:200, contentType:'application/json',body:JSON.stringify({type:'FeatureCollection',metadata:{generated:Date.now()},features:[{type:'Feature',id:'test-event',properties:{mag:4.2,place:'Test Region',time:Date.now(),updated:Date.now(),status:'reviewed',url:'https://earthquake.usgs.gov/earthquakes/eventpage/test-event'},geometry:{type:'Point',coordinates:[-120,35,10]}}]})}));
   await page.route('https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=300',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({events:[{id:'EONET_TEST',title:'Example wildfire',categories:[{title:'Wildfires'}],link:'https://eonet.gsfc.nasa.gov/',geometry:[{type:'Point',coordinates:[-122,45],date:'2026-11-01T00:00:00Z'}]}]})}));
+  await page.route('https://api.gbif.org/v1/occurrence/search?**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({results:[{key:123,scientificName:'Panthera leo',decimalLatitude:-1.3,decimalLongitude:36.8,eventDate:'2026-01-01',datasetKey:'test'}]})}));
   await page.goto('http://127.0.0.1:8080/',{waitUntil:'domcontentloaded'});
   await page.locator('#summary').waitFor();
   assert.match(await page.locator('#summary').innerText(),/1 of 1/);
+  await page.selectOption('#dataset','gbif');await page.click('#loadBtn');
+  await page.getByText('Panthera leo',{exact:false}).first().waitFor();
+  assert.match(await page.locator('#dataNotice').innerText(),/GBIF BIODIVERSITY RECORDS/);
   await page.selectOption('#dataset','nasa');await page.click('#loadBtn');
   await page.getByText('Example wildfire',{exact:false}).first().waitFor();
   assert.match(await page.locator('#dataNotice').innerText(),/NASA NATURAL EVENTS/);
