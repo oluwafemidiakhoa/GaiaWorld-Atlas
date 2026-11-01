@@ -79,6 +79,8 @@ const assert = require('node:assert/strict');
   assert.equal(history.snapshots.length,1);
   page.once('dialog', dialog=>dialog.accept());await page.click('#clearHistory');
   assert.match(await page.locator('#historySummary').innerText(),/0 saved snapshots/);
+  await page.click('#validateEvidence');
+  await page.getByText(/Quality check: no blocking issues/).waitFor();
   await page.fill('#siteLat','91');await page.click('#analyzeLocation');
   await page.getByText(/Enter valid coordinates/).waitFor();
   assert.equal(await page.locator('#downloadEvidence').isDisabled(),true);
